@@ -71,5 +71,6 @@ def main():
   analyzeGraph(fp, int(numHops))
    
 if __name__ == "__main__":
-  main()
+#  main()
+  populateGraph()
 
