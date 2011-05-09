@@ -45,65 +45,96 @@ Performs a naive random walk from a random seed node
 def analyzeGraph(fp, numHops):
   Graph = getGraph(fp)
   #Graph = loadGraph()
-  UNIDict = {} #creating the distribution dictionary for plotting(UNI)
   graphNodes = Graph.keys()
   startIdx = random.randint(0, len(graphNodes))   #FIXME start node should be explicit 
   startNode = graphNodes[startIdx]
   print "startIdx = %s, startNode = %s"%(startIdx, startNode)
   #runBFS(Graph, startNode)
-  RWDistribution = runRW(startNode, numHops, Graph)
   print "Random Walk"
-  print RWDistribution
-  UNI = getUniformSample(numHops, Graph)
+  RWalk = runRW(startNode, numHops, Graph)
+  print RWalk
   print "Uniform sample:"
-  print "%s samples, %s unique samples"%(len(UNI), len(set(UNI)))
-  for node in UNI: UNIDict[node] = len(Graph[node])
-  print UNIDict
+  UNI = getUniformSample(numHops, Graph)
+  print UNI
+  print "BFS"
+  BFSWalk = runBFS(startNode, numHops, Graph)
+  print BFSWalk
 
 def runRW(startNode, numHops, Graph):
   walkedNodes = []
   distDict = {} #creating the distribution dictionary for plotting(RW)
   currNode = startNode
-  print "Starting walk..."
+  #print "Starting walk..."
   while (len(walkedNodes) < numHops + 1):
     walkedNodes.append(currNode)
     currNeighbors = Graph[currNode]
     currNode = currNeighbors[random.randint(0, len(currNeighbors)) - 1]
-  print "Walk done. Walked nodes: %s"%walkedNodes
+  print "Random Walk done. Walked nodes: %s"%walkedNodes
   print "Number of nodes walked: %s Number of unique nodes: %s"\
   %(len(walkedNodes), len(set(walkedNodes)))
-  for node in set(walkedNodes):
+  for node in set(walkedNodes): 
     distDict[node] = len(Graph[node])   
     #print node, len(Graph[node])
+  plotGraph(distDict, "RandomWalk")
   return distDict
-  #plotGraph(distDict)
 
-def runBFS(Graph, startNode):
+"""
+def runBFS(Graph, startNode, numHops):
+  walkedNodes = []
+  currNode = startNode
+  while len(walkedNodes < numHops):
+    walkedNodes.append(currNode)
+    currNeighbors = Graph[currNode]
+    for node in currNeighbors: walkedNodes.append(node)
   pass
+"""
+
+def runBFS(startNode, numHops, Graph, path=[]):
+  q=[startNode]
+  while q:
+    v=q.pop(0)
+    if not v in path:
+      path=path+[v]
+      q=q+Graph[v]
+    if len(path) > numHops:
+      distDict = {}
+      for node in path: 
+        distDict[node] = len(Graph[node])
+      plotGraph(distDict, "BFS") 
+      return distDict
 
 def getUniformSample(numHops, Graph):
   uniformSample = []
+  UNIDict = {}
   nodes = Graph.keys()
   for i in range(numHops):
     uniformSample.append(random.choice(nodes))
-  return uniformSample
+  print "%s samples, %s unique samples"%(len(uniformSample), \
+  len(set(uniformSample)))
+  for node in uniformSample: UNIDict[node] = len(Graph[node])
+  #print UNIDict
+  plotGraph(UNIDict, "UniformSample")
+  return UNIDict
 
-def plotGraph(distDict):
+def plotGraph(distDict, walkType):
   import matplotlib
   import numpy as np
   import matplotlib.pyplot as plt
+  fileName = "walk_%s.png"%(walkType)
   fig = plt.figure()
-  N=20
+  #N=200
+  print "Plotting %s distribution..."%walkType
   #nodes = distDict.keys()
   neighbors = distDict.values()
+  N = max(neighbors)
   #creating values for frequency plot
   samples = np.array(neighbors)
   n, bins, patches  = plt.hist( samples, N, facecolor="magenta",\
                                   range=[1,N], normed=True )
-  plt.xlabel( 'bins' )
-  plt.ylabel( 'Probability' )  
-  fig.savefig('test.png')
-  print "saved"
+  plt.xlabel('Degree')
+  plt.ylabel('Probability')  
+  fig.savefig(fileName)
+  print "plot saved at %s"%fileName
 
 def main():
   try:
