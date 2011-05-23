@@ -88,6 +88,7 @@ def analyzeGraph(fp, numHops):
   #plotScatter(Graph2, "FullGraph2", len(Graph2.keys()), max(Graph2.values()))
 
 def runRDS(startNode, numHops, Graph):
+  print type(Graph)
   candidateNodes = []
   walkedNodes = []
   distDict = {} #creating the distribution dictionary for plotting(RDS)
@@ -97,6 +98,7 @@ def runRDS(startNode, numHops, Graph):
   #print Graph[currNode]
   #candidateNodes.append(currNode) #got to make the startNode a candidate
   walkedNodes.append(currNode) #got to make startnode a walked node bc it's a seed
+  print type(currNode)
   currNeighbors = Graph[currNode]
   while ( len(walkedNodes) < numHops ):
     if (len(currNeighbors) < 4): #if it 3 neighbors or fewer, take all the neighbors
