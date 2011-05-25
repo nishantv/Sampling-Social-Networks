@@ -1,8 +1,9 @@
 import sys
-import cPickle
 import random
 import os
 import utilities
+import cProfile 
+from collections import deque
 #import matplotlib
 #import numpy as np
 #import matplotlib.pyplot as plt
@@ -16,128 +17,174 @@ Performs:
 2) Generates a uniform sample (rejection based)
 3) BFS
 """
+
+NUMITERATIONS = 28
+
 def analyzeGraph(fileName, numHops):
   os.system("clear")
+  print outputDir
   Graph = utilities.getGraph(fileName)
   #Graph = loadGraph()
   graphNodes = Graph.keys()
+  visitedNodes = set()
+  currIndex = 1
+  while currIndex <= NUMITERATIONS:
+    startIdx = random.randint(0, len(graphNodes))
+    startNode = graphNodes[startIdx]
+    if startNode not in visitedNodes:
+      print "Random Walk"
+      runRW(startNode, numHops, Graph, currIndex)
+      print "Uniform sample"
+      getUniformSample(numHops, Graph, currIndex)
+      print "BFS"
+      #runBFS(startNode, numHops, Graph, currIndex)
+      bfs(startNode, numHops, Graph, currIndex)
+      print "RDS"
+      try:
+        runRDS(startNode, numHops, Graph, currIndex)
+      except:
+        print "RDS: StartNode %s Run %s bombed......................."%(startNode, currIndex)
+      currIndex += 1
+  """
   startIdx = random.randint(0, len(graphNodes))   #FIXME start node should be explicit 
   startNode = graphNodes[startIdx]
   print "startIdx = %s, startNode = %s"%(startIdx, startNode)
-
   print "Random Walk"
-  RWalkDict, RWalkList = runRW(startNode, numHops, Graph)
-  print RWalkDict
-  utilities.getZEstimate(RWalkList, Graph)
-
+  ##RWalkDict, RWalkList = runRW(startNode, numHops, Graph, ITERNUM)
+  ##print RWalkDict
+  ##zEst = utilities.getZEstimate(RWalkList, Graph)
+  ##print "Z-estimate = %s"%zEst
+  runRW(startNode, numHops, Graph, ITERNUM)
   print "Uniform sample:"
-  UNI = getUniformSample(numHops, Graph)
-  print UNI
-
+  ##UNI = getUniformSample(numHops, Graph, ITERNUM)
+  ##print UNI
+  getUniformSample(numHops, Graph, ITERNUM)
   print "BFS"
-  BFSWalk = runBFS(startNode, numHops, Graph)
-  print BFSWalk
-  
-  #N = max(max(RWalk.values()), max(UNI.values()), max(BFSWalk.values())) 
-  N = 0  #plots all graphs with same scale
-  #plotGraph(RWalk, "RandomWalk", numHops, N)
-  #plotGraph(UNI, "UniformSample", numHops, N)
-  #plotGraph(BFSWalk, "BFS", numHops, N)
-  Graph2 = {}
-  for node in Graph.keys(): Graph2[node] = len(Graph[node])
-  #plotGraph(Graph2, "FullGraph", len(Graph2.keys()), max(Graph2.values()))
-  #plotScatter(Graph2, "FullGraph2", len(Graph2.keys()), max(Graph2.values()))
-
-
-def runRW(startNode, numHops, Graph):
+  ##BFSWalk = runBFS(startNode, numHops, Graph, ITERNUM)
+  ##print BFSWalk
+  runBFS(startNode, numHops, Graph, ITERNUM)
+  """
+def runRW(startNode, numHops, Graph, ITERNUM):
+  runType = "RandomWalk"
+  fileName = "%s/%s_%s_%s.txt"%(outputDir, runType, numHops, ITERNUM)
+  fp = open(fileName, "w")
   walkedNodes = []
   distDict = {} #creating the distribution dictionary for plotting(RW)
   currNode = startNode
   #print "Starting walk..."
   while (len(walkedNodes) < numHops + 1):
     walkedNodes.append(currNode)
+    fp.write("%s\t%s\n"%(currNode, len(Graph[currNode]) ) )
     currNeighbors = Graph[currNode]
     currNode = currNeighbors[random.randint(0, len(currNeighbors)) - 1]
-  print "Random Walk done. Walked nodes: %s"%walkedNodes
-  #print "RW set: %s"%(set(walkedNodes))
-  #print "RW getSet: %s"%(utilities.getSet(walkedNodes))
-  print "Number of nodes walked: %s Number of unique nodes: %s"\
-  %(len(walkedNodes), len(set(walkedNodes)))
-  for node in set(walkedNodes): 
-    distDict[node] = len(Graph[node])   
+  ##print "Random Walk done."## Walked nodes: %s"%walkedNodes
+  ##print "Number of nodes walked: %s Number of unique nodes: %s"\
+  ##%(len(walkedNodes), len(set(walkedNodes)))
+  ##for node in set(walkedNodes): 
+    ##distDict[node] = len(Graph[node])   
     #print node, len(Graph[node])
-  return distDict, utilities.getSet(walkedNodes)
+  print "%s saved... "%fileName
+  fp.close()
+  ##return distDict, utilities.getSet(walkedNodes)
 
-def runBFS(startNode, numHops, Graph, path=[]):
+def runBFS(startNode, numHops, Graph, ITERNUM, path=[]):
+  runType = "BFS"
+  pathDict = {}
+  fileName = "%s/%s_%s_%s.txt"%(outputDir, runType, numHops, ITERNUM)
+  fp = open(fileName, "w")
   q=[startNode]
   while q:
     v=q.pop(0)
-    if not v in path:
+    #if not v in path:
+    if not pathDict.has_key(v):
+      pathDict[v] = 1
       path=path+[v]
       q=q+Graph[v]
-      #print v,
     if len(path) > numHops:
-      distDict = {}
+      ##distDict = {}
       for node in path: 
-        distDict[node] = len(Graph[node])
-      return distDict
+        ##distDict[node] = len(Graph[node])
+        fp.write("%s\t%s\n"%(node, len(Graph[node]) ) )
+      print "%s saved... "%fileName
+      fp.close()
+      return True
+      ##return distDict
 
-def getUniformSample(numHops, Graph):
+def bfs(startNode, numHops, Graph, ITERNUM):
+  """
+  Implementation of BFS using collections
+  """
+  runType = "BFS"
+  fileName = "%s/%s_%s_%s.txt"%(outputDir, runType, numHops, ITERNUM)
+  fp = open(fileName, "w")
+  queue, enqueued = deque([(None, startNode)]), set([startNode])
+  while queue:
+    if len(enqueued) > numHops:
+      #print type(enqueued), len(enqueued)
+      for node in enqueued:
+        fp.write("%s\t%s\n"%(node, len(Graph[node]) ) )
+      print "%s saved... "%fileName
+      fp.close()
+      return 
+    parent, n = queue.popleft()
+    #yield parent, n 
+    new = set(Graph[n]) - enqueued
+    enqueued |= new
+    queue.extend([(n, child) for child in new])
+
+
+def getUniformSample(numHops, Graph, ITERNUM):
+  runType = "UNI"
+  fileName = "%s/%s_%s_%s.txt"%(outputDir, runType, numHops, ITERNUM)
+  fp = open(fileName, "w")
   uniformSample = []
   UNIDict = {}
   nodes = Graph.keys()
   for i in range(numHops):
     uniformSample.append(random.choice(nodes))
-  print "%s samples, %s unique samples"%(len(uniformSample), \
-  len(set(uniformSample)))
-  for node in uniformSample: UNIDict[node] = len(Graph[node])
-  #print UNIDict
-  return UNIDict
+  ##print "%s samples, %s unique samples"%(len(uniformSample), \
+  ##len(set(uniformSample)))
+  for node in uniformSample: 
+    ##UNIDict[node] = len(Graph[node])
+    fp.write("%s\t%s\n"%(node, len(Graph[node]) ) )
+  print "%s saved... "%fileName
+  fp.close()
+  ##return UNIDict
 
-def plotGraph(distDict, walkType, numHops, N):
-  #mu, sigma = 100, 15#
-  fileName = "walk_%s_%s.png"%(walkType, numHops)
-  fig = plt.figure()
-  #ax = fig.add_subplot(111)#
-  print "Plotting %s distribution..."%walkType
-  #nodes = distDict.keys()
-  neighbors = distDict.values()
-  if (N == 0): N = max(neighbors)
-  samples = np.array(neighbors)
-  n, bins, patches  = plt.hist( samples, N, facecolor="green",\
-                                  range=[1,N], normed=True )
-  plt.title('Plot of %s with size %s'%(walkType, numHops))
-  plt.xlabel('Degree')
-  plt.ylabel('Probability')  
-  #fig.set_size_inches(18.5,10.5)
-  fig.savefig(fileName)#, dpi=300)
-  print "plot saved at %s"%fileName
-
-def plotScatter(distDict, walkType, numHops, N):
-  def log_10_product(x, pos): return '%1i' % (x)
-  ax = pylab.subplot(111)
-  ax.set_xscale('log')
-  ax.set_yscale('log')
-  formatter = pylab.FuncFormatter(log_10_product)
-  ax.xaxis.set_major_formatter(formatter)
-  ax.yaxis.set_major_formatter(formatter)
-  xVals = distDict.keys()
-  yVals = distDict.values()
-  ax.scatter(xVals, yVals, s=40, c='b', marker='s', faceted=False)
-  ax.set_xlim(1e-1, 1e4)
-  ax.set_ylim(1e-1, 1e4)
-  pylab.grid(True)
-  pylab.xlabel(r"Degree", fontsize = 12)
-  pylab.ylabel(r"Frequency", fontsize = 12)
-
-def getZEstimate(walkedList, Graph):
-  #walkedList = walkedPath.keys()
-  print "Z-estimates:"
-  print len(walkedList)//10
-  print len(walkedList)//2
-  Xa = walkedList[:(len(walkedList)//10)]
-  Xb = walkedList[(len(walkedList)//2):]
-  print "Xa:%s\nXb:%s"%(Xa, Xb)
+def runRDS(startNode, numHops, Graph, ITERNUM):
+  runType = "RDS"
+  fileName = "%s/%s_%s_%s.txt"%(outputDir, runType, numHops, ITERNUM)
+  fp = open(fileName, "w")
+  walkedNodes = []
+  nodeQ = []
+  triedNodes = set()
+  currNode = startNode
+  walkedNodes.append(currNode)
+  nodeQ += [currNode]
+  currNeighbors = Graph[currNode]
+  while (len(walkedNodes) < numHops):
+    #currNeighbors = Graph[currNode]
+    if len(currNeighbors) < 4:
+      for node in currNeighbors:
+        if node not in triedNodes:
+          nodeQ += [node]
+          triedNodes.add(node)
+    else: #pasting Harish's code
+      for j in range (1, 4):
+        i = random.randint(0, (len(currNeighbors) - j) )
+        if (currNeighbors[i] not in triedNodes):
+          triedNodes.add(currNeighbors[i])
+          nodeQ += [currNeighbors[i]]
+          currNeighbors.append ( currNeighbors.pop(i) )
+    #print "Qlen = %s"%len(nodeQ)
+    currNode = nodeQ.pop(0)
+    p = random.random()
+    if (p > 0.33) and currNode not in walkedNodes:
+      walkedNodes.append(currNode)
+      fp.write("%s\t%s\n"%(currNode, len(Graph[currNode])))
+    currNeighbors = Graph[currNode]
+  print "%s saved... "%fileName
+  fp.close()
 
 def main():
   try:
@@ -145,6 +192,9 @@ def main():
   except:
     printError()
   if os.path.exists(fileName):
+    global outputDir
+    outputDir = "%s/outputs"%(fileName.split(".")[0]) 
+    if not os.path.exists(outputDir): os.makedirs(outputDir)
     analyzeGraph(fileName, int(numHops))
   else: 
     printError()
